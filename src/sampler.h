@@ -1,6 +1,7 @@
 #ifndef SAMPLER_H
 #define SAMPLER_H
 
+#include "plain_for.h"
 #include <random>
 
 
@@ -10,43 +11,6 @@ inline float randFloat()
     static std::uniform_real_distribution<float> dist(0, 1);
     return dist(gen);
 }
-
-
-/**
- *  for(int y = beginY; y < endY; ++y)
- *  for(int x = beginX; x < endX; ++x)
- */
-class PlainFor2
-{
-public:
-    PlainFor2(int bx, int ex, int by, int ey);
-
-    bool next(int& xi, int& yi);
-
-private:
-    int beginX, endX;
-    int beginY, endY;
-    int x, y;
-};
-
-
-/**
- *  for(int z = beginZ; y < endZ; ++z)
- *  for(int y = beginY; y < endY; ++y)
- *  for(int x = beginX; x < endX; ++x)
- */
-class PlainFor3
-{
-public:
-    PlainFor3(int bx, int ex, int by, int ey, int bz, int ez);
-
-    bool next(int& xi, int& yi, int& zi);
-
-private:
-    PlainFor2 for2;
-    int beginZ, endZ;
-    int z;
-};
 
 
 class Sampler
@@ -73,7 +37,7 @@ public:
 
 private:
     int spp;
-    PlainFor3 for3;
+    PlainFor<3> for3;
 };
 
 

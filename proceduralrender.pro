@@ -22,7 +22,8 @@ HEADERS += \
     src/exprtk.hpp \
     src/sampler.h \
     src/ProceduralRender.h \
-    src/SceneReader.h
+    src/SceneReader.h \
+    src/plain_for.h
 
 SOURCES += \
     src/server.cpp \

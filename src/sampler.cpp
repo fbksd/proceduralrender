@@ -3,66 +3,6 @@
 
 
 //=====================================================================
-//                             PlainFor2
-//=====================================================================
-PlainFor2::PlainFor2(int bx, int ex, int by, int ey):
-    beginX(bx), endX(ex),
-    beginY(by), endY(ey),
-    x(bx), y(by)
-{}
-
-bool PlainFor2::next(int &xi, int &yi)
-{
-    xi = x;
-    yi = y;
-
-    if(x++ >= endX || y >= endY)
-    {
-        if((yi = ++y) >= endY)
-        {
-            x = beginX;
-            y = beginY;
-            return false;
-        }
-        if(x >= endX)
-        {
-            xi = x = beginX;
-            ++x;
-        }
-    }
-
-    return true;
-}
-
-
-//=====================================================================
-//                             PlainFor3
-//=====================================================================
-PlainFor3::PlainFor3(int bx, int ex, int by, int ey, int bz, int ez):
-    for2(bx, ex, by, ey),
-    beginZ(bz), endZ(ez),
-    z(bz)
-{}
-
-bool PlainFor3::next(int &xi, int &yi, int &zi)
-{
-    zi = z;
-
-    if(!for2.next(xi, yi) || z >= endZ)
-    {
-        if((zi = ++z) >= endZ)
-        {
-            z = beginZ;
-            return false;
-        }
-        for2.next(xi, yi);
-    }
-
-    return true;
-}
-
-
-//=====================================================================
 //                             Sampler
 //=====================================================================
 Sampler::Sampler(int bx, int ex, int by, int ey):
@@ -77,13 +17,13 @@ Sampler::Sampler(int bx, int ex, int by, int ey):
 PixelSampler::PixelSampler(int bx, int ex, int by, int ey, int spp):
     Sampler(bx, ex, by, ey),
     spp(spp),
-    for3(0, spp, bx, ex, by, ey)
+    for3(by, ey, bx, ex, 0, spp)
 {}
 
 bool PixelSampler::next(float *sample)
 {
     int x, y, s;
-    if(!for3.next(s, x, y))
+    if(!for3.next(y, x, s))
         return false;
 
     for(int i = 0; i < NUM_RANDOM_PARAMETERS; ++i)
