@@ -58,13 +58,14 @@ void extractInfo(const std::string infoStr, int& width, int& height, int& spp)
     spp = std::round(spp_f);
 }
 
-std::unique_ptr<ExpExpression> compileExpression(const std::string expStr, float* params, float* features)
+std::unique_ptr<ExpExpression> compileExpression(const std::string expStr, int width, int height, int spp, float* params, float* features)
 {
     ExpSymbolTable symbol_table;
     symbol_table.add_constants();
 
-    symbol_table.add_constant("width", 500);
-    symbol_table.add_constant("height", 500);
+    symbol_table.add_constant("width", width);
+    symbol_table.add_constant("height", height);
+    symbol_table.add_constant("spp", spp);
 
     symbol_table.add_variable("IMAGE_X", params[0]);
     symbol_table.add_variable("IMAGE_Y", params[1]);
@@ -181,7 +182,7 @@ std::unique_ptr<Scene> readScene(const QString& filename, float* params, float* 
 
     int w = 0, h = 0, spp = 0;
     extractInfo(info.toStdString(), w, h, spp);
-    auto expPtr = compileExpression(exp.toStdString(), params, features);
+    auto expPtr = compileExpression(exp.toStdString(), w, h, spp, params, features);
     std::unique_ptr<Scene> scene(new Scene(w, h, spp, std::move(expPtr)));
 
     return scene;
