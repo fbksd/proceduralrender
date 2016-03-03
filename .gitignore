@@ -1,0 +1,12 @@
+# scenes
+scenes/*
+
+# tmp files
+*~
+
+# Renderer output files:
+*.exr
+
+# QtCreator user files
+*.pro.user*
+
