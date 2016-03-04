@@ -39,6 +39,13 @@ void Server::getSceneInfo(SceneInfo *sceneinfo)
 {
     sceneinfo->set("width", scene->width);
     sceneinfo->set("height", scene->height);
+
+    std::vector<bool> usedParamsMask(NUM_RANDOM_PARAMETERS, false);
+    for(RandomParameter p: scene->randomParameters)
+        usedParamsMask[p] = true;
+
+    sceneinfo->set("has_dof", ((bool)usedParamsMask[LENS_U]) || ((bool)usedParamsMask[LENS_V]));
+    sceneinfo->set("has_motion_blur", (bool)usedParamsMask[TIME]);
 }
 
 void Server::evaluateSamples(bool isSPP, int numSamples, int* resultSize)

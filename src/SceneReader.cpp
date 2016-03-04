@@ -4,10 +4,13 @@
 #include <QDebug>
 #include <QFile>
 #include <tuple>
+#include <iostream>
+#include <boost/algorithm/string.hpp>
 
 using ExpSymbolTable = exprtk::symbol_table<float>;
 using ExpExpression = exprtk::expression<float>;
 using ExpParser = exprtk::parser<float>;
+using ExpSymbol = ExpParser::dependent_entity_collector::symbol_t;
 using ExpError = exprtk::parser_error::type;
 using ExpPtr = std::unique_ptr<ExpExpression>;
 
@@ -58,7 +61,10 @@ void extractInfo(const std::string infoStr, int& width, int& height, int& spp)
     spp = std::round(spp_f);
 }
 
-std::unique_ptr<ExpExpression> compileExpression(const std::string expStr, int width, int height, int spp, float* params, float* features)
+std::tuple< std::unique_ptr<ExpExpression>,
+            std::vector<RandomParameter>,
+            std::vector<Feature> >
+compileExpression(const std::string expStr, int width, int height, int spp, float* params, float* features)
 {
     ExpSymbolTable symbol_table;
     symbol_table.add_constants();
@@ -101,6 +107,8 @@ std::unique_ptr<ExpExpression> compileExpression(const std::string expStr, int w
     expression->register_symbol_table(symbol_table);
 
     ExpParser parser;
+    parser.dec().collect_variables() = true;
+    parser.dec().collect_assignments() = true;
 
     if (!parser.compile(expStr, *expression))
     {
@@ -122,7 +130,38 @@ std::unique_ptr<ExpExpression> compileExpression(const std::string expStr, int w
         fflush(stdout);
     }
 
-    return expression;
+    // Find list of used variables
+    std::deque<ExpSymbol> symbol_list;
+    parser.dec().symbols(symbol_list);
+    auto newEnd = std::remove_if(symbol_list.begin(), symbol_list.end(),
+        [](ExpSymbol& symbol)
+        { return symbol.second != ExpParser::e_st_variable; }
+    );
+    symbol_list.erase(newEnd, symbol_list.end());
+    // Create list of used random parameters from the list of used variables
+    std::vector<RandomParameter> usedParameters;
+    for (std::size_t i = 0; i < symbol_list.size(); ++i)
+    {
+        const ExpSymbol& symbol = symbol_list[i];
+        RandomParameter p;
+        if(stringToRandomParameter(boost::to_upper_copy(symbol.first), &p))
+            usedParameters.push_back(p);
+    }
+
+    // Find list of variables assigned to
+    symbol_list = std::deque<ExpSymbol>();
+    parser.dec().assignment_symbols(symbol_list);
+    // Create list of used features from the list of variables assigned to
+    std::vector<Feature> usedFeatures;
+    for (std::size_t i = 0; i < symbol_list.size(); ++i)
+    {
+        const ExpSymbol& symbol = symbol_list[i];
+        Feature f;
+        if(stringToFeature(boost::to_upper_copy(symbol.first), &f))
+            usedFeatures.push_back(f);
+    }
+
+    return std::make_tuple(std::move(expression), usedParameters, usedFeatures);
 }
 
 }
@@ -132,10 +171,12 @@ std::unique_ptr<ExpExpression> compileExpression(const std::string expStr, int w
 //=====================================================================
 //                            SCENE
 //=====================================================================
-Scene::Scene(int w, int h, int spp, ExpPtr exp):
+Scene::Scene(int w, int h, int spp, ExpPtr exp, const std::vector<RandomParameter>& parameters, const std::vector<Feature>& features):
     width(w),
     height(h),
     spp(spp),
+    randomParameters(parameters),
+    features(features),
     exp(std::move(exp))
 {}
 
@@ -182,8 +223,12 @@ std::unique_ptr<Scene> readScene(const QString& filename, float* params, float* 
 
     int w = 0, h = 0, spp = 0;
     extractInfo(info.toStdString(), w, h, spp);
-    auto expPtr = compileExpression(exp.toStdString(), w, h, spp, params, features);
-    std::unique_ptr<Scene> scene(new Scene(w, h, spp, std::move(expPtr)));
+
+    ExpPtr expPtr;
+    std::vector<RandomParameter> usedParameters;
+    std::vector<Feature> usedFeatures;
+    std::tie(expPtr, usedParameters, usedFeatures) = compileExpression(exp.toStdString(), w, h, spp, params, features);
+    std::unique_ptr<Scene> scene(new Scene(w, h, spp, std::move(expPtr), usedParameters, usedFeatures));
 
     return scene;
 }
