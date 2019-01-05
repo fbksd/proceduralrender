@@ -1,9 +1,19 @@
+/*
+ * Copyright (c) 2018 Jonas Deyson
+ *
+ * This software is released under the MIT License.
+ *
+ * You should have received a copy of the MIT License
+ * along with this program. If not, see <https://opensource.org/licenses/MIT>
+ */
+
 #ifndef EXPREADER_H
 #define EXPREADER_H
 
-#include "Benchmark/RenderingServer/RenderingServer.h"
+#include <fbksd/renderer/samples.h>
 #include <memory>
-#include "QString"
+#include <QString>
+using namespace fbksd;
 
 namespace exprtk {
     template<typename T>

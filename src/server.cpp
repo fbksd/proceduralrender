@@ -1,19 +1,22 @@
+/*
+ * Copyright (c) 2018 Jonas Deyson
+ *
+ * This software is released under the MIT License.
+ *
+ * You should have received a copy of the MIT License
+ * along with this program. If not, see <https://opensource.org/licenses/MIT>
+ */
+
 #include "server.h"
 #include "sampler.h"
-#include <QCoreApplication>
+#include <fbksd/core/SceneInfo.h>
 #include <QDebug>
 #include <iostream>
+using namespace fbksd;
 
 
 Server::Server(const QString& scenefile)
 {
-    server = new RenderingServer;
-    QObject::connect(server, &RenderingServer::getSceneInfo, this, &Server::getSceneInfo);
-    QObject::connect(server, &RenderingServer::evaluateSamples, this, &Server::evaluateSamples);
-    QObject::connect(server, &RenderingServer::evaluateSamplesCrop, this, &Server::evaluateSamplesCrop);
-    QObject::connect(server, &RenderingServer::evaluateSamplesPDF, this, &Server::evaluateSamplesPDF);
-    QObject::connect(server, &RenderingServer::finishRender, this, &Server::finish);
-
     memset(params, 0, NUM_RANDOM_PARAMETERS * sizeof(float));
     memset(features, 0, NUM_FEATURES * sizeof(float));
 
@@ -25,72 +28,56 @@ Server::Server(const QString& scenefile)
     }
 }
 
-Server::~Server()
+void Server::start()
 {
-    delete server;
-}
+    RenderingServer server;
+    server.onSetParameters([this](const SampleLayout& layout){
+        m_layout = layout;
+    });
 
-void Server::start(int port)
-{
-    server->startServer(port);
+    server.onGetSceneInfo([this](){
+        SceneInfo info;
+        this->getSceneInfo(&info);
+        return info;
+    });
+
+    server.onEvaluateSamples([this](int64_t spp, int64_t remainingCount){
+        return this->evaluateSamples(spp, remainingCount);
+    });
+
+    server.run();
 }
 
 void Server::getSceneInfo(SceneInfo *sceneinfo)
 {
-    sceneinfo->set("width", scene->width);
-    sceneinfo->set("height", scene->height);
+    sceneinfo->set<int64_t>("width", scene->width);
+    sceneinfo->set<int64_t>("height", scene->height);
+    sceneinfo->set<int64_t>("max_spp", scene->spp);
+    sceneinfo->set<int64_t>("max_samples", scene->spp * scene->width * scene->height);
 
     std::vector<bool> usedParamsMask(NUM_RANDOM_PARAMETERS, false);
     for(RandomParameter p: scene->randomParameters)
         usedParamsMask[p] = true;
 
-    sceneinfo->set("has_dof", ((bool)usedParamsMask[LENS_U]) || ((bool)usedParamsMask[LENS_V]));
-    sceneinfo->set("has_motion_blur", (bool)usedParamsMask[TIME]);
+    sceneinfo->set<bool>("has_dof", ((bool)usedParamsMask[LENS_U]) || ((bool)usedParamsMask[LENS_V]));
+    sceneinfo->set<bool>("has_motion_blur", (bool)usedParamsMask[TIME]);
 }
 
-void Server::evaluateSamples(bool isSPP, int numSamples, int* resultSize)
+bool Server::evaluateSamples(int64_t spp, int64_t remainingCount)
 {
-    int w = scene->width;
-    int h = scene->height;
-    int totalNumSamples = isSPP ? w * h * numSamples : numSamples;
-    *resultSize = totalNumSamples;
+    int64_t w = scene->width;
+    int64_t h = scene->height;
+    int64_t totalNumSamples = w * h * spp + remainingCount;
 
-    Sampler* sampler = nullptr;
-    if(isSPP)
-        sampler = new PixelSampler(0, w, 0, h, numSamples);
+    std::unique_ptr<Sampler> sampler;
+    if(remainingCount == 0)
+        sampler = std::make_unique<PixelSampler>(0, w, 0, h, spp);
     else
-        sampler = new SparseSampler(0, w, 0, h, numSamples);
+        sampler = std::make_unique<SparseSampler>(0, w, 0, h, totalNumSamples);
 
     SamplesPipe pipe;
-    render(sampler, pipe);
-    delete sampler;
-}
-
-void Server::evaluateSamplesCrop(bool isSPP, int numSamples, const CropWindow &crop, int *resultSize)
-{
-    int w = scene->width;
-    int h = scene->height;
-    int totalNumSamples = isSPP ? w * h * numSamples : numSamples;
-    *resultSize = totalNumSamples;
-
-    Sampler* sampler = nullptr;
-    if(isSPP)
-        sampler = new PixelSampler(crop.beginX, crop.endX, crop.beginY, crop.endY, numSamples);
-    else
-        sampler = new SparseSampler(crop.beginX, crop.endX, crop.beginY, crop.endY, numSamples);
-
-    SamplesPipe pipe;
-    render(sampler, pipe);
-    delete sampler;
-}
-
-void Server::evaluateSamplesPDF(bool isSPP, int numSamples, const float* pdf, int *resultSize)
-{
-}
-
-void Server::finish()
-{
-    QCoreApplication::quit();
+    render(sampler.get(), pipe);
+    return true;
 }
 
 void Server::render(Sampler* sampler, SamplesPipe& pipe)

@@ -1,8 +1,18 @@
+/*
+ * Copyright (c) 2018 Jonas Deyson
+ *
+ * This software is released under the MIT License.
+ *
+ * You should have received a copy of the MIT License
+ * along with this program. If not, see <https://opensource.org/licenses/MIT>
+ */
+
 #ifndef PROCEDURALRENDER_H
 #define PROCEDURALRENDER_H
 
 #include "SceneReader.h"
-#include "Benchmark/RenderingServer/RenderingServer.h"
+#include <fbksd/renderer/RenderingServer.h>
+using namespace fbksd;
 
 
 class ProceduralRender
