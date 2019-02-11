@@ -13,6 +13,7 @@
 #include "SceneReader.h"
 #include <fbksd/renderer/RenderingServer.h>
 #include <memory>
+#include <thread>
 using namespace fbksd;
 
 class Sampler;
@@ -26,13 +27,15 @@ public:
 
 private:
     void getSceneInfo(SceneInfo* scene);
-    bool evaluateSamples(int64_t spp, int64_t remainingCount);
-    void render(Sampler* sampler, SamplesPipe& pipe);
+    void evaluateSamples(int64_t spp, int64_t remainingCount, int tileSize);
+    void render(int w, int h, int spp);
+    void renderRemaining(int w, int h, int spp, int64_t n, int tileSize);
 
     std::unique_ptr<Scene> scene;
     float params[NUM_RANDOM_PARAMETERS];
     float features[NUM_FEATURES];
     SampleLayout m_layout;
+    std::unique_ptr<std::thread> m_thread;
 };
 
 #endif // SERVER_H
