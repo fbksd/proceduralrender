@@ -144,6 +144,9 @@ void Server::render(int w, int h, int spp)
             buffer.set(TEXTURE_COLOR_R_NS, features[TEXTURE_COLOR_R_NS]);
             buffer.set(TEXTURE_COLOR_G_NS, features[TEXTURE_COLOR_G_NS]);
             buffer.set(TEXTURE_COLOR_B_NS, features[TEXTURE_COLOR_B_NS]);
+            buffer.set(DIFFUSE_COLOR_R, features[COLOR_R]);
+            buffer.set(DIFFUSE_COLOR_G, features[COLOR_G]);
+            buffer.set(DIFFUSE_COLOR_B, features[COLOR_B]);
 
             pipe << buffer;
         }
